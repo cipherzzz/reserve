@@ -8,6 +8,7 @@ describe("Reserve", function () {
   const INITIAL_SUPPLY = 1000000; // 1 million
   const MAX_LIMIT = 100; // Max Withdrawal in a single tx regardless of block height
   const REFILL_RATE = 1; // Withdrawal addend per block
+  const DEPOSIT_AMT = 1000; // default deposit amount of erc20
 
   // Helper to instruct hardhat to mine n blocks for testing
   async function mineNBlocks(n: number) {
@@ -43,6 +44,18 @@ describe("Reserve", function () {
     it("Should deploy wallet", async function () {
       const { reserve } = await loadFixture(deployFixtures);
       expect(reserve.address).to.exist;
+    });
+
+    it("Should allow user to deposit ERC20 tokens", async function () {
+      const { dummyERC20, reserve, otherAccount } = await loadFixture(deployFixtures);
+      await dummyERC20.approve(reserve.address, utils.parseEther(DEPOSIT_AMT.toString()));
+      await reserve.deposit(otherAccount.address, utils.parseEther(DEPOSIT_AMT.toString()));
+
+      // Check that the balances mapping is correct
+      expect(await reserve.balances(otherAccount.address)).to.equal(utils.parseEther(DEPOSIT_AMT.toString()));
+
+      // dummy check that the contract has a balance of the erc20
+      expect(await dummyERC20.balanceOf(reserve.address)).to.equal(utils.parseEther(DEPOSIT_AMT.toString()));
     });
 
   });
