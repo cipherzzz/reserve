@@ -6,8 +6,8 @@ import { utils } from "ethers";
 describe("Reserve", function () {
 
   const INITIAL_SUPPLY = 1000000; // 1 million
-  const DEPOSIT_AMT = 100;
-  const MAX_WITHDRAWAL_BLOCK = 1;
+  const MAX_LIMIT = 100; // Max Withdrawal in a single tx regardless of block height
+  const REFILL_RATE = 1; // Withdrawal addend per block
 
   // Helper to instruct hardhat to mine n blocks for testing
   async function mineNBlocks(n: number) {
@@ -24,7 +24,10 @@ describe("Reserve", function () {
     const DummyERC20 = await ethers.getContractFactory("DummyERC20");
     const dummyERC20 = await DummyERC20.deploy("Dummy ERC20", "DUMMY", INITIAL_SUPPLY);
 
-    return { dummyERC20, owner, otherAccount };
+    const Reserve = await ethers.getContractFactory("Reserve");
+    const reserve = await Reserve.deploy(dummyERC20.address, utils.parseEther(MAX_LIMIT.toString()), utils.parseEther(REFILL_RATE.toString()));
+
+    return { reserve, dummyERC20, owner, otherAccount };
   }
 
   describe("Deployment", function () {
@@ -36,5 +39,11 @@ describe("Reserve", function () {
       expect(await dummyERC20.balanceOf(owner.address)).to.equal(utils.parseEther(INITIAL_SUPPLY.toString()));
 
     });
+
+    it("Should deploy wallet", async function () {
+      const { reserve } = await loadFixture(deployFixtures);
+      expect(reserve.address).to.exist;
+    });
+
   });
 });
