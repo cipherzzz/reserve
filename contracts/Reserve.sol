@@ -19,6 +19,7 @@ contract Reserve is ReentrancyGuard
     uint256 public maxLimit;
 
     mapping(address => uint256) public balances;
+    mapping(address => uint256) public withdrawals;
 
     // @dev - Supporting a single ERC20 token for now
     constructor(address _token, uint256 _maxLimit, uint256 _refillRate) {
@@ -37,8 +38,25 @@ contract Reserve is ReentrancyGuard
 
         require(_amount <= maxLimit, "Withdrawal amount exceeds max withdrawal limit");
 
+        uint256 currentBlock = block.number;
+        uint256 lastWithdrawalBlock = withdrawals[msg.sender];
+
+        // console.log("current block", block.number);
+        // console.log("lastWithdrawalBlock block", lastWithdrawalBlock);
+
+        uint256 withdrawalMultiplier = 1;
+        
+        if(lastWithdrawalBlock > 0 && currentBlock > lastWithdrawalBlock) {
+            withdrawalMultiplier = currentBlock.sub(lastWithdrawalBlock);
+        } 
+
+        uint256 blockWithdrawal = refillRate.mul(withdrawalMultiplier);
+
+        require(_amount <= blockWithdrawal, "Withdrawal amount exceeds max withdrawal per block");
+
         IERC20 erc20 = IERC20(token);
         erc20.safeTransfer(_recipient, _amount);
-        balances[_recipient] -= _amount;
+        balances[msg.sender] -= _amount;
+        withdrawals[msg.sender] = currentBlock;
     }
 }

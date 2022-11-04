@@ -58,6 +58,33 @@ describe("Reserve", function () {
       expect(await dummyERC20.balanceOf(reserve.address)).to.equal(utils.parseEther(DEPOSIT_AMT.toString()));
     });
 
+    it.skip("Should allow user with a balance to spend ERC20 tokens", async function () {
+      const { dummyERC20, reserve, owner, otherAccount, emptyAccount } = await loadFixture(deployFixtures);
+      await dummyERC20.approve(reserve.address, utils.parseEther(DEPOSIT_AMT.toString()));
+      await reserve.deposit(otherAccount.address, utils.parseEther(DEPOSIT_AMT.toString()));
+
+      const withdrawal1 = 1;
+      reserve.connect(otherAccount);
+      await reserve.spend(emptyAccount.address, utils.parseEther(withdrawal1.toString()));
+      const expectedBalance1 = utils.parseEther((DEPOSIT_AMT - withdrawal1).toString());
+      expect(await reserve.balances(otherAccount.address)).to.equal(expectedBalance1);
+
+      // We programmatically are mining the next 5 blocks which will up our block multiplier
+      // and allow us to withdraw more tokens
+      // Maybe we could have some kind of a helper method on the contract to give the user an idea
+      // of the withdrawal available to them
+      await mineNBlocks(5);
+      const withdrawal2 = 5;
+      await reserve.spend(emptyAccount.address, utils.parseEther(withdrawal2.toString()));
+      const expectedBalance2 = utils.parseEther((DEPOSIT_AMT - withdrawal1 - withdrawal2).toString());
+      expect(await reserve.balances(otherAccount.address)).to.equal(expectedBalance2);
+
+      // We expect this to fail as this tx will probably be in the same block as the previous test
+      const withdrawal3 = 5;
+      expect(reserve.spend(emptyAccount.address, utils.parseEther(withdrawal3.toString()))).to.be.revertedWith("Reserve: Withdrawal amount exceeds available balance");
+
+    });
+
     it("Should not allow user WITHOUT balance to spend ERC20 tokens", async function () {
       const { reserve, emptyAccount } = await loadFixture(deployFixtures);
 
