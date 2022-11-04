@@ -20,7 +20,7 @@ describe("Reserve", function () {
   async function deployFixtures() {
 
     // Contracts are deployed using the first signer/account by default
-    const [owner, otherAccount] = await ethers.getSigners();
+    const [owner, otherAccount, emptyAccount] = await ethers.getSigners();
 
     const DummyERC20 = await ethers.getContractFactory("DummyERC20");
     const dummyERC20 = await DummyERC20.deploy("Dummy ERC20", "DUMMY", INITIAL_SUPPLY);
@@ -28,7 +28,7 @@ describe("Reserve", function () {
     const Reserve = await ethers.getContractFactory("Reserve");
     const reserve = await Reserve.deploy(dummyERC20.address, utils.parseEther(MAX_LIMIT.toString()), utils.parseEther(REFILL_RATE.toString()));
 
-    return { reserve, dummyERC20, owner, otherAccount };
+    return { reserve, dummyERC20, owner, otherAccount, emptyAccount };
   }
 
   describe("Deployment", function () {
@@ -56,6 +56,13 @@ describe("Reserve", function () {
 
       // dummy check that the contract has a balance of the erc20
       expect(await dummyERC20.balanceOf(reserve.address)).to.equal(utils.parseEther(DEPOSIT_AMT.toString()));
+    });
+
+    it("Should not allow user WITHOUT balance to spend ERC20 tokens", async function () {
+      const { reserve, emptyAccount } = await loadFixture(deployFixtures);
+
+      const withdrawal = 1;
+      expect(reserve.spend(emptyAccount.address, utils.parseEther(withdrawal.toString()))).to.be.revertedWith("Reserve: Withdrawal amount exceeds available balance");
     });
 
   });
